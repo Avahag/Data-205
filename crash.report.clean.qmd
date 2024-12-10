@@ -1,0 +1,105 @@
+---
+title: "crash report (data clean)"
+author: "Ava Haghighi"
+format: html
+editor: visual
+---
+
+## What do Montgomery County drivers get distracted by most often?
+
+Based on the Montgomery crash data, a variable that categorizes the causes of driver distractions into more than 20groups has been broken down and grouped into key categories. These categories include: cellphone distractions, physical activity distractions, distractions caused by others in the vehicle, distractions due to lost in thought, and other distractions.
+
+```{r importing data }
+setwd("C:/Users/ava/Downloads/Data 205/final project")
+```
+
+```{r}
+data <- read.csv("CrashReporting2.csv")
+```
+
+```{r loading librarys}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(summarytools)
+```
+
+```{r cleaning data}
+data <- data %>%
+  mutate(across(where(is.character), 
+                ~ na_if(na_if(na_if(na_if(na_if(., ""), "N/A"), "NULL"), "Unknown"), "UNKNOWN"))) %>%
+
+
+  mutate(across(where(is.character), 
+                ~ na_if(., ""))) %>%
+
+  mutate(across(where(is.numeric), 
+                ~ na_if(., NA))) %>%
+  mutate(across(where(is.integer), 
+                ~ na_if(., NA)))
+
+```
+
+
+```{r}
+# indicating how many groups of distraction there is in the data 
+  unique_groups <- unique(data$Driver.Distracted.By)
+
+print(unique_groups)
+```
+
+
+```{r Distraction grouped }
+# dividing 23 groups in 5 main categorize 
+distractions_grouped <- data.frame(distraction = data$Driver.Distracted.By, stringsAsFactors = FALSE)
+
+distractions_grouped <- distractions_grouped %>%
+  mutate(group = case_when(
+    # Group 1: Not Distracted (for anything related to not being distracted)
+    distraction %in% c("NOT DISTRACTED", "Not Distracted") ~ "Not Distracted",
+    
+    # Group 2: Distractions from Other Occupants (for distractions caused by other people in the vehicle)
+    distraction %in% c("BY OTHER OCCUPANTS", "DISTRACTED BY OUTSIDE PERSON OBJECT OR EVENT", "BY MOVING OBJECT IN VEHICLE") ~ "Distractions from Other Occupants",
+    
+    # Group 3: Using Devices (for distractions related to using devices like phones, navigation systems, etc.)
+    distraction %in% c("USING DEVICE OBJECT BROUGHT INTO VEHICLE", 
+                       "OTHER ELECTRONIC DEVICE (NAVIGATIONAL PALM PILOT)", 
+                       "USING OTHER DEVICE CONTROLS INTEGRAL TO VEHICLE", 
+                       "OTHER CELLULAR PHONE RELATED", 
+                       "TALKING OR LISTENING TO CELLULAR PHONE", 
+                       "DIALING CELLULAR PHONE", 
+                       "TEXTING FROM A CELLULAR PHONE", 
+                       "Manually Operating (dialing, playing game, etc.)") ~ "Using Devices",
+    
+    # Group 4: Inattention or Lost in Thought (for distractions due to inattention or thinking)
+    distraction %in% c("INATTENTIVE OR LOST IN THOUGHT", "LOOKED BUT DID NOT SEE", 
+                       "Other Action (looking away from task, etc.)", "Talking/listening") ~ "Inattention or Lost in Thought",
+    
+    # Group 5: Eating, Smoking, or Other Physical Distractions (for eating, smoking, or other actions)
+    distraction %in% c("EATING OR DRINKING", "SMOKING RELATED") ~ "Eating, Smoking, or Other Physical Distractions",
+    
+    # Fallback for any other cases (if any value does not fit into above categories)
+    TRUE ~ "Other"
+  ))
+```
+
+```{r}
+unique(distractions_grouped$group)
+```
+
+
+```{r}
+distractions_grouped_filtered <- distractions_grouped %>%
+  filter(!group %in% c("Not Distracted", "Other"))
+```
+
+```{r}
+ggplot(distractions_grouped_filtered, aes(x = group)) + 
+  geom_bar(fill = "red", color = "black") +
+  labs(title = "Distribution of Driver Distraction Groups",
+       x = "Distraction Group",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
